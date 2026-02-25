@@ -4,7 +4,11 @@ import numpy as np
 from ultralytics import YOLO
 import tempfile
 
-model = YOLO("yolov8n.pt")
+@st.cache_resource
+def load_model():
+    return YOLO("yolov8n.pt")
+
+model = load_model()
 
 OBSTACLE_CLASSES = ["person", "car", "motorcycle", "bicycle", "truck", "bus"]
 
