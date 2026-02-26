@@ -268,7 +268,7 @@ if uploaded_file is not None:
     else:
         st.write("No major obstacles detected.")
 
-     st.divider()
+    st.divider()
 
     # ============================================================
     # METRICS
