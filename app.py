@@ -249,10 +249,14 @@ if uploaded_file is not None:
 
     if view_option == "Side-by-Side":
         col1, col2 = st.columns(2)
-        st.subheader("Original Image")
-        col1.image(uploaded_file, use_column_width=True)
-        st.subheader("AI Detection Output")
-        col2.image(cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB), use_column_width=True)
+        with col1:
+            st.subheader("Original Image")
+            st.image(uploaded_file, use_column_width=True)
+
+        with col2:
+            st.subheader("AI Detection Output")
+            st.image(cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB), use_column_width=True)
+
     else:
         st.image(cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB), use_column_width=True)
 
@@ -335,12 +339,12 @@ if uploaded_file is not None:
     # VIEW MODE
     # ============================================================
 
-    st.subheader("View Mode")
-    view_option = st.radio("View Mode:", ["Side-by-Side", "Detection Only"])
+    # st.subheader("View Mode")
+    # view_option = st.radio("View Mode:", ["Side-by-Side", "Detection Only"])
 
-    if view_option == "Side-by-Side":
-        col1, col2 = st.columns(2)
-        col1.image(uploaded_file, use_column_width=True)
-        col2.image(cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB), use_column_width=True)
-    else:
-        st.image(cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB), use_column_width=True)
+    # if view_option == "Side-by-Side":
+    #     col1, col2 = st.columns(2)
+    #     col1.image(uploaded_file, use_column_width=True)
+    #     col2.image(cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB), use_column_width=True)
+    # else:
+    #     st.image(cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB), use_column_width=True)
