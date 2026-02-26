@@ -42,16 +42,119 @@ def analyze(image_path):
 
     return obstacle_count, crack_ratio, green_ratio, free_ratio, score
 
-st.title("SafeWalk AI")
+st.title("🚶 SafeWalk")
+st.markdown("### AI-Based Sidewalk Pedestrian Safety Analyzer")
 
-uploaded = st.file_uploader("Upload sidewalk image")
+st.markdown(
+"""
+SafeWalk analyzes pedestrian walkways using computer vision 
+to evaluate structural safety, obstruction risk, and environmental quality.
 
-if uploaded:
-    tfile = tempfile.NamedTemporaryFile(delete=False)
-    tfile.write(uploaded.read())
-    obs, crack, green, free, score = analyze(tfile.name)
+It combines:
+- **YOLOv8** for obstacle detection  
+- Crack detection using edge analysis  
+- Green coverage estimation  
+- Walkable free-space estimation  
+"""
+)
 
-    st.write("Obstacles:", obs)
-    st.write("Crack %:", crack*100)
-    st.write("Green %:", green*100)
-    st.write("Safety Score:", score)
+st.divider()
+
+# ---------------- SIDEBAR ---------------- #
+st.sidebar.header("About This Project")
+
+st.sidebar.markdown("""
+**Problem Statement**
+
+Urban sidewalks often suffer from:
+- Cracks and structural damage
+- Obstructions (vehicles, objects)
+- Poor walkable width
+- Lack of green integration
+
+This tool estimates pedestrian safety using AI.
+
+---
+
+**Model Used**
+- YOLOv8 (Ultralytics)
+- OpenCV Image Processing
+- Rule-based Safety Scoring
+
+---
+
+**Output**
+- Crack %
+- Obstacle count
+- Green coverage %
+- Walkable space %
+- Safety Score (0–100)
+""")
+
+# ---------------- FILE UPLOAD ---------------- #
+uploaded_file = st.file_uploader(
+    "📤 Upload a sidewalk image",
+    type=["jpg", "jpeg", "png"]
+)
+
+if uploaded_file is not None:
+
+    suffix = os.path.splitext(uploaded_file.name)[1]
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+        tmp_file.write(uploaded_file.getbuffer())
+        image_path = tmp_file.name
+
+    with st.spinner("Analyzing sidewalk safety..."):
+        obs, crack, green, free, score = analyze(image_path)
+
+    st.divider()
+
+    # ----------- DISPLAY IMAGES -----------
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Original Image")
+        st.image(uploaded_file, use_column_width=True)
+
+    with col2:
+        st.subheader("Detection Output")
+        st.image(image_path, use_column_width=True)
+
+    st.divider()
+
+    # ----------- METRICS -----------
+    st.subheader("Safety Metrics")
+
+    m1, m2, m3, m4 = st.columns(4)
+
+    m1.metric("Crack %", f"{round(crack*100,2)}%")
+    m2.metric("Obstacles", obs)
+    m3.metric("Green %", f"{round(green*100,2)}%")
+    m4.metric("Free Space %", f"{round(free*100,2)}%")
+
+    st.divider()
+
+    # ----------- SAFETY SCORE -----------
+    st.subheader("Overall Safety Score")
+
+    if score >= 75:
+        st.success(f"Safety Score: {score} → Low Risk")
+    elif score >= 50:
+        st.warning(f"Safety Score: {score} → Moderate Risk")
+    else:
+        st.error(f"Safety Score: {score} → High Risk")
+
+
+
+# uploaded = st.file_uploader("Upload sidewalk image")
+
+# if uploaded:
+#     tfile = tempfile.NamedTemporaryFile(delete=False)
+#     tfile.write(uploaded.read())
+#     obs, crack, green, free, score = analyze(tfile.name)
+
+#     st.write("Obstacles:", obs)
+#     st.write("Crack %:", crack*100)
+#     st.write("Green %:", green*100)
+#     st.write("Safety Score:", score)
