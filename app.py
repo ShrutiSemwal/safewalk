@@ -37,17 +37,40 @@ def detect_obstacles(image):
     Returns obstacle count and annotated image.
     """
     results = model(image)
-    annotated_img = results[0].plot()
 
-    count = 0
+    annotated_img = image.copy()
+    obstacle_count = 0
+
     for r in results:
         for box in r.boxes:
             cls_id = int(box.cls[0])
             cls_name = model.names[cls_id]
-            if cls_name in OBSTACLE_CLASSES:
-                count += 1
 
-    return count, annotated_img
+            if cls_name in OBSTACLE_CLASSES:
+                obstacle_count += 1
+
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+                cv2.rectangle(
+                    annotated_img,
+                    (x1, y1),
+                    (x2, y2),
+                    (0, 0, 255),   # Red (BGR)
+                    2
+                )
+
+                cv2.putText(
+                    annotated_img,
+                    cls_name,      
+                    (x1, y1 - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,           
+                    (0, 0, 255),
+                    1,
+                    cv2.LINE_AA
+                )
+
+    return obstacle_count, annotated_img
 
 
 def detect_cracks(image):
@@ -140,7 +163,7 @@ def analyze_image(image_path):
 # ============================================================
 
 st.title("🚶 SafeWalk AI")
-st.markdown("### AI-Based Pedestrian Infrastructure Safety Assessment System")
+st.markdown("### AI-Based Sidewalk Pedestrian Safety Analyzer")
 
 st.markdown("""
 SafeWalk evaluates sidewalk safety using computer vision and 
@@ -162,17 +185,22 @@ st.sidebar.header("Project Overview")
 st.sidebar.markdown("""
 ### Problem Statement
 Urban pedestrian pathways suffer from:
-- Structural degradation
-- Obstruction hazards
+- Cracks and Structural degradation
+- Obstruction hazards (vehicles, objects)
 - Reduced walkable width
-- Poor environmental design
+- Poor green infrastructure
 
 ### Objective
 Quantify pedestrian safety using AI-based visual analytics.
 
+### **Model Used**
+- YOLOv8 (Ultralytics)
+- OpenCV Image Processing
+- Rule-based Safety Scoring
+
 ### Output Metrics
 - Obstacle Density
-- Structural Damage Ratio
+- Cracks and Structural Damage Ratio
 - Green Coverage
 - Walkability Index
 - Composite Safety Score (0–100)
