@@ -172,7 +172,7 @@ st.markdown("""
 SafeWalk evaluates sidewalk safety using computer vision and 
 multi-factor risk modeling.
 
-### 🔬 System Components
+### System Components
 - **YOLOv8** for obstacle detection  
 - Edge-density based crack estimation  
 - HSV-based green coverage estimation  
@@ -248,17 +248,43 @@ if uploaded_file is not None:
     st.divider()
 
     # ============================================================
+    # Detection Summary
+    # ============================================================
+
+    st.subheader("Detection Summary")
+
+    unique_obstacles = {}
+    
+    for r in model(cv2.imread(image_path)):
+        for box in r.boxes:
+            cls_id = int(box.cls[0])
+            cls_name = model.names[cls_id]
+            if cls_name in OBSTACLE_CLASSES:
+                unique_obstacles[cls_name] = unique_obstacles.get(cls_name, 0) + 1
+    
+    if unique_obstacles:
+        for k, v in unique_obstacles.items():
+            st.write(f"• {k.title()} detected: {v}")
+    else:
+        st.write("No major obstacles detected.")
+
+     st.divider()
+
+    # ============================================================
     # METRICS
     # ============================================================
 
     st.subheader("Quantitative Safety Metrics")
 
-    m1, m2, m3, m4 = st.columns(4)
+    col1, col2 = st.columns(2)
 
-    m1.metric("Obstacle Count", obs)
-    m2.metric("Crack Ratio", f"{round(crack*100,2)}%")
-    m3.metric("Green Coverage", f"{round(green*100,2)}%")
-    m4.metric("Walkability Index", f"{round(walkable*100,2)}%")
+    with col1:
+        st.metric("Crack Ratio (Structural Damage)", f"{round(crack*100,2)}%")
+        st.metric("Obstacle Count", obs)
+    
+    with col2:
+        st.metric("Green Coverage", f"{round(green*100,2)}%")
+        st.metric("Walkability Index", f"{round(walkable*100,2)}%")
 
     st.divider()
 
@@ -268,11 +294,26 @@ if uploaded_file is not None:
 
     st.subheader("Composite Pedestrian Safety Score")
 
-    if score >= 80:
-        st.success(f"Safety Score: {score} → Low Risk Environment")
-    elif score >= 60:
-        st.warning(f"Safety Score: {score} → Moderate Risk Environment")
-    else:
-        st.error(f"Safety Score: {score} → High Risk Environment")
-
+    score_color = (
+    "green" if score >= 80
+    else "orange" if score >= 60
+    else "red"
+    )
+    
+    st.markdown(
+        f"""
+        <h1 style='text-align:center; color:{score_color};'>
+        {score}
+        </h1>
+        """,
+        unsafe_allow_html=True
+    )
+    
     st.progress(score / 100)
+    
+    if score >= 80:
+        st.success("Low Risk Environment")
+    elif score >= 60:
+        st.warning("Moderate Risk Environment")
+    else:
+        st.error("High Risk Environment")
