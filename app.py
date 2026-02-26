@@ -2,6 +2,7 @@ import streamlit as st
 import cv2
 import numpy as np
 from ultralytics import YOLO
+import os
 import tempfile
 
 @st.cache_resource
@@ -15,7 +16,7 @@ OBSTACLE_CLASSES = ["person", "car", "motorcycle", "bicycle", "truck", "bus"]
 def analyze(image_path):
     image = cv2.imread(image_path)
 
-    results = model(image_path)
+    results = model(image)
     obstacle_count = 0
 
     for r in results:
