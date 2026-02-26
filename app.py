@@ -320,6 +320,11 @@ if uploaded_file is not None:
 
     st.divider()
 
+    # ============================================================
+    # VIEW MODE
+    # ============================================================
+
+    st.subheader("View Mode")
     view_option = st.radio("View Mode:", ["Side-by-Side", "Detection Only"])
 
     if view_option == "Side-by-Side":
