@@ -40,6 +40,7 @@ def detect_obstacles(image):
 
     annotated_img = image.copy()
     obstacle_count = 0
+    shown_labels = set()  # to track which labels already displayed
 
     for r in results:
         for box in r.boxes:
@@ -55,20 +56,22 @@ def detect_obstacles(image):
                     annotated_img,
                     (x1, y1),
                     (x2, y2),
-                    (0, 0, 255),   # Red (BGR)
+                    (0, 0, 255),  # Red in BGR
                     2
                 )
 
-                cv2.putText(
-                    annotated_img,
-                    cls_name,      
-                    (x1, y1 - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,           
-                    (0, 0, 255),
-                    1,
-                    cv2.LINE_AA
-                )
+                if cls_name not in shown_labels:
+                    cv2.putText(
+                        annotated_img,
+                        cls_name,
+                        (x1, y1 - 8),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,
+                        (255, 255, 255),  # White text
+                        2,
+                        cv2.LINE_AA
+                    )
+                    shown_labels.add(cls_name)
 
     return obstacle_count, annotated_img
 
