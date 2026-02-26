@@ -2,8 +2,24 @@ import streamlit as st
 import cv2
 import numpy as np
 from ultralytics import YOLO
-import os
 import tempfile
+import os
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+st.set_page_config(
+    page_title="SafeWalk AI",
+    page_icon="🚶",
+    layout="wide"
+)
+
+OBSTACLE_CLASSES = ["person", "car", "motorcycle", "bicycle", "truck", "bus"]
+
+# ============================================================
+# MODEL LOADING
+# ============================================================
 
 @st.cache_resource
 def load_model():
@@ -11,89 +27,163 @@ def load_model():
 
 model = load_model()
 
-OBSTACLE_CLASSES = ["person", "car", "motorcycle", "bicycle", "truck", "bus"]
+# ============================================================
+# CORE COMPUTER VISION MODULES
+# ============================================================
 
-def analyze(image_path):
-    image = cv2.imread(image_path)
-
+def detect_obstacles(image):
+    """
+    Detect dynamic and static obstacles using YOLOv8.
+    Returns obstacle count and annotated image.
+    """
     results = model(image)
-    obstacle_count = 0
+    annotated_img = results[0].plot()
 
+    count = 0
     for r in results:
         for box in r.boxes:
             cls_id = int(box.cls[0])
             cls_name = model.names[cls_id]
             if cls_name in OBSTACLE_CLASSES:
-                obstacle_count += 1
+                count += 1
 
+    return count, annotated_img
+
+
+def detect_cracks(image):
+    """
+    Crack estimation using edge density approximation.
+    """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray,50,150)
-    crack_ratio = np.sum(edges>0)/edges.size
+    edges = cv2.Canny(gray, 50, 150)
+    crack_ratio = np.sum(edges > 0) / edges.size
+    return crack_ratio
 
+
+def detect_green_coverage(image):
+    """
+    Estimate environmental greenery using HSV segmentation.
+    """
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv,(35,40,40),(85,255,255))
-    green_ratio = np.sum(mask>0)/mask.size
+    mask = cv2.inRange(hsv, (35, 40, 40), (85, 255, 255))
+    green_ratio = np.sum(mask > 0) / mask.size
+    return green_ratio
 
-    free_ratio = 1 - crack_ratio
 
-    score = 100 - crack_ratio*50 - obstacle_count*10
-    score += green_ratio*10
-    score = max(0,min(100,score))
+def estimate_walkable_space(crack_ratio, obstacle_count):
+    """
+    Estimate walkable safety factor.
+    Combines structural damage and obstruction density.
+    """
+    obstruction_penalty = min(obstacle_count * 0.05, 0.4)
+    structural_penalty = crack_ratio * 0.6
 
-    return obstacle_count, crack_ratio, green_ratio, free_ratio, score
+    walkable_index = 1 - (obstruction_penalty + structural_penalty)
+    return max(0, walkable_index)
 
-st.title("🚶 SafeWalk")
-st.markdown("### AI-Based Sidewalk Pedestrian Safety Analyzer")
 
-st.markdown(
-"""
-SafeWalk analyzes pedestrian walkways using computer vision 
-to evaluate structural safety, obstruction risk, and environmental quality.
+# ============================================================
+# RESEARCH-STYLE SAFETY SCORING MODEL
+# ============================================================
 
-It combines:
+def compute_safety_score(crack_ratio, obstacle_count, green_ratio, walkable_index):
+    """
+    Weighted multi-factor pedestrian safety model.
+
+    Weight Distribution (Research-inspired heuristic):
+    - Structural Integrity: 35%
+    - Obstruction Risk: 30%
+    - Walkability Index: 25%
+    - Environmental Quality: 10%
+    """
+
+    structural_score = (1 - crack_ratio) * 35
+    obstruction_score = max(0, (1 - obstacle_count * 0.08)) * 30
+    walkability_score = walkable_index * 25
+    environmental_score = green_ratio * 10
+
+    final_score = structural_score + obstruction_score + walkability_score + environmental_score
+
+    return round(max(0, min(100, final_score)), 2)
+
+
+# ============================================================
+# PIPELINE
+# ============================================================
+
+def analyze_image(image_path):
+    image = cv2.imread(image_path)
+
+    obstacle_count, annotated_img = detect_obstacles(image)
+    crack_ratio = detect_cracks(image)
+    green_ratio = detect_green_coverage(image)
+    walkable_index = estimate_walkable_space(crack_ratio, obstacle_count)
+
+    safety_score = compute_safety_score(
+        crack_ratio,
+        obstacle_count,
+        green_ratio,
+        walkable_index
+    )
+
+    return (
+        obstacle_count,
+        crack_ratio,
+        green_ratio,
+        walkable_index,
+        safety_score,
+        annotated_img
+    )
+
+# ============================================================
+# USER INTERFACE
+# ============================================================
+
+st.title("🚶 SafeWalk AI")
+st.markdown("### AI-Based Pedestrian Infrastructure Safety Assessment System")
+
+st.markdown("""
+SafeWalk evaluates sidewalk safety using computer vision and 
+multi-factor risk modeling.
+
+### 🔬 System Components
 - **YOLOv8** for obstacle detection  
-- Crack detection using edge analysis  
-- Green coverage estimation  
-- Walkable free-space estimation  
-"""
-)
+- Edge-density based crack estimation  
+- HSV-based green coverage estimation  
+- Walkability modeling  
+- Weighted risk scoring algorithm  
+""")
 
 st.divider()
 
-# ---------------- SIDEBAR ---------------- #
-st.sidebar.header("About This Project")
+# Sidebar Info
+st.sidebar.header("Project Overview")
 
 st.sidebar.markdown("""
-**Problem Statement**
+### Problem Statement
+Urban pedestrian pathways suffer from:
+- Structural degradation
+- Obstruction hazards
+- Reduced walkable width
+- Poor environmental design
 
-Urban sidewalks often suffer from:
-- Cracks and structural damage
-- Obstructions (vehicles, objects)
-- Poor walkable width
-- Lack of green integration
+### Objective
+Quantify pedestrian safety using AI-based visual analytics.
 
-This tool estimates pedestrian safety using AI.
-
----
-
-**Model Used**
-- YOLOv8 (Ultralytics)
-- OpenCV Image Processing
-- Rule-based Safety Scoring
-
----
-
-**Output**
-- Crack %
-- Obstacle count
-- Green coverage %
-- Walkable space %
-- Safety Score (0–100)
+### Output Metrics
+- Obstacle Density
+- Structural Damage Ratio
+- Green Coverage
+- Walkability Index
+- Composite Safety Score (0–100)
 """)
 
-# ---------------- FILE UPLOAD ---------------- #
+# ============================================================
+# FILE UPLOAD
+# ============================================================
+
 uploaded_file = st.file_uploader(
-    "📤 Upload a sidewalk image",
+    "📤 Upload a Sidewalk Image",
     type=["jpg", "jpeg", "png"]
 )
 
@@ -105,12 +195,15 @@ if uploaded_file is not None:
         tmp_file.write(uploaded_file.getbuffer())
         image_path = tmp_file.name
 
-    with st.spinner("Analyzing sidewalk safety..."):
-        obs, crack, green, free, score = analyze(image_path)
+    with st.spinner("Running AI Safety Assessment..."):
+        obs, crack, green, walkable, score, annotated = analyze_image(image_path)
 
     st.divider()
 
-    # ----------- DISPLAY IMAGES -----------
+    # ============================================================
+    # IMAGE DISPLAY
+    # ============================================================
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -118,43 +211,37 @@ if uploaded_file is not None:
         st.image(uploaded_file, use_column_width=True)
 
     with col2:
-        st.subheader("Detection Output")
-        st.image(image_path, use_column_width=True)
+        st.subheader("AI Detection Output")
+        st.image(cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB), use_column_width=True)
 
     st.divider()
 
-    # ----------- METRICS -----------
-    st.subheader("Safety Metrics")
+    # ============================================================
+    # METRICS
+    # ============================================================
+
+    st.subheader("Quantitative Safety Metrics")
 
     m1, m2, m3, m4 = st.columns(4)
 
-    m1.metric("Crack %", f"{round(crack*100,2)}%")
-    m2.metric("Obstacles", obs)
-    m3.metric("Green %", f"{round(green*100,2)}%")
-    m4.metric("Free Space %", f"{round(free*100,2)}%")
+    m1.metric("Obstacle Count", obs)
+    m2.metric("Crack Ratio", f"{round(crack*100,2)}%")
+    m3.metric("Green Coverage", f"{round(green*100,2)}%")
+    m4.metric("Walkability Index", f"{round(walkable*100,2)}%")
 
     st.divider()
 
-    # ----------- SAFETY SCORE -----------
-    st.subheader("Overall Safety Score")
+    # ============================================================
+    # SAFETY SCORE
+    # ============================================================
 
-    if score >= 75:
-        st.success(f"Safety Score: {score} → Low Risk")
-    elif score >= 50:
-        st.warning(f"Safety Score: {score} → Moderate Risk")
+    st.subheader("Composite Pedestrian Safety Score")
+
+    if score >= 80:
+        st.success(f"Safety Score: {score} → Low Risk Environment")
+    elif score >= 60:
+        st.warning(f"Safety Score: {score} → Moderate Risk Environment")
     else:
-        st.error(f"Safety Score: {score} → High Risk")
+        st.error(f"Safety Score: {score} → High Risk Environment")
 
-
-
-# uploaded = st.file_uploader("Upload sidewalk image")
-
-# if uploaded:
-#     tfile = tempfile.NamedTemporaryFile(delete=False)
-#     tfile.write(uploaded.read())
-#     obs, crack, green, free, score = analyze(tfile.name)
-
-#     st.write("Obstacles:", obs)
-#     st.write("Crack %:", crack*100)
-#     st.write("Green %:", green*100)
-#     st.write("Safety Score:", score)
+    st.progress(score / 100)
