@@ -23,7 +23,7 @@ OBSTACLE_CLASSES = ["person", "car", "motorcycle", "bicycle", "truck", "bus"]
 
 @st.cache_resource
 def load_model():
-    return YOLO("yolov8n.pt")
+    return YOLO("yolov8n.pt", task="detect")
 
 model = load_model()
 
