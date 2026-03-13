@@ -73,7 +73,7 @@ def detect_obstacles(image):
                     )
                     shown_labels.add(cls_name)
 
-    return obstacle_count, annotated_img
+    return obstacle_count, annotated_img, results
 
 
 def detect_cracks(image):
@@ -140,7 +140,7 @@ def compute_safety_score(crack_ratio, obstacle_count, green_ratio, walkable_inde
 def analyze_image(image_path):
     image = cv2.imread(image_path)
 
-    obstacle_count, annotated_img = detect_obstacles(image)
+    obstacle_count, annotated_img, results = detect_obstacles(image)
     crack_ratio = detect_cracks(image)
     green_ratio = detect_green_coverage(image)
     walkable_index = estimate_walkable_space(crack_ratio, obstacle_count)
@@ -158,7 +158,8 @@ def analyze_image(image_path):
         green_ratio,
         walkable_index,
         safety_score,
-        annotated_img
+        annotated_img,
+        results
     )
 
 # ============================================================
@@ -227,7 +228,7 @@ if uploaded_file is not None:
         image_path = tmp_file.name
 
     with st.spinner("Running AI Safety Assessment..."):
-        obs, crack, green, walkable, score, annotated = analyze_image(image_path)
+        obs, crack, green, walkable, score, annotated, results = analyze_image(image_path)
 
     st.divider()
 
@@ -270,10 +271,11 @@ if uploaded_file is not None:
 
     unique_obstacles = {}
     
-    for r in model(cv2.imread(image_path)):
+    for r in results:
         for box in r.boxes:
             cls_id = int(box.cls[0])
             cls_name = model.names[cls_id]
+            
             if cls_name in OBSTACLE_CLASSES:
                 unique_obstacles[cls_name] = unique_obstacles.get(cls_name, 0) + 1
     
